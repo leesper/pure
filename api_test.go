@@ -31,7 +31,7 @@ func (h helloHandler) Handle(ctx context.Context) interface{} {
 	return helloOutput{fmt.Sprintf("hello, %s", h.Input.Name)}
 }
 
-func TestAPIBuilding(t *testing.T) {
+func TestPostAPIBuilding(t *testing.T) {
 	defer holmes.Start().Stop()
 	API("hello").Version("apiv1").Class("hello").Post().Handle(helloHandler{}).Done()
 	expected := "/apiv1/hello/hello"
