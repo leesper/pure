@@ -74,6 +74,7 @@ func newAPI(version, class, name, method string, handlerVal reflect.Value, middl
 }
 
 func (a *api) uri() string {
+	// FIXME: handle when version, class and name are empty string
 	return fmt.Sprintf("/%s/%s/%s", a.version, a.class, a.name)
 }
 
