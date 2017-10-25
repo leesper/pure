@@ -22,6 +22,82 @@ func helloWorld(ctx context.Context) interface{} {
 	return helloOutput{"hello, world"}
 }
 
+func TestPlugins(t *testing.T) {
+	API("hello_world").Version("apiv2").Class("hello").Get().Use(JSONPlugin).HandleFunc(helloWorld).Done()
+
+	uri := "/apiv2/hello/hello_world"
+
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	JSONPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("returned: %d, expected: %d", rec.Code, http.StatusUnsupportedMediaType)
+	}
+
+	message := fmt.Sprintf("%s not %s", ContentType, ApplicationJSON)
+	if rec.Body.String() != message {
+		t.Fatalf("returned: %s, expected: %s", rec.Body.String(), message)
+	}
+
+	rec = httptest.NewRecorder()
+	req.Header.Add(ContentType, ApplicationJSON)
+
+	JSONPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("returned: %d, expected: %d", rec.Code, http.StatusOK)
+	}
+
+	if contentType := rec.Header().Get(ContentType); contentType != ApplicationJSON {
+		t.Fatalf("returned content type: %s, expected: %s", contentType, ApplicationJSON)
+	}
+
+	output := helloOutput{}
+	if err = json.Unmarshal(rec.Body.Bytes(), &output); err != nil {
+		t.Fatal(err)
+	}
+
+	if output.Greetings != "hello, world" {
+		t.Errorf("returned: %s, expected: %s", output.Greetings, "hello, world")
+	}
+
+	LoggerPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+	req.Method = http.MethodOptions
+	CORSPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+}
+
+func willPanic(ctx context.Context) interface{} {
+	ch := make(chan string)
+	close(ch)
+	close(ch)
+	return helloOutput{"will panic"}
+}
+
+func TestRecoverPanicPlugin(t *testing.T) {
+	API("will_panic").Version("apiv1").Class("test").Use(RecoverPanicPlugin).Get().HandleFunc(willPanic).Done()
+	uri := "/apiv1/test/will_panic"
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	RecoverPanicPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("returned: %d, expected: %d", rec.Code, http.StatusInternalServerError)
+	}
+
+	if len(rec.Body.String()) == 0 {
+		t.Error("error message should not be empty")
+	}
+}
+
 func TestGetAPIBuilding(t *testing.T) {
 	API("hello_world").Version("apiv1").Class("hello").Get().HandleFunc(helloWorld).Done()
 	expected := "/apiv1/hello/hello_world"

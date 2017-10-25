@@ -109,6 +109,12 @@ func (b *APIBuilder) Get() *APIBuilder {
 	return b
 }
 
+// Use adds a series of middleware plugins to the API.
+func (b *APIBuilder) Use(handlers ...negroni.Handler) *APIBuilder {
+	b.middlewares = append(b.middlewares, handlers...)
+	return b
+}
+
 // HandleFunc defines the handler function of request.
 func (b *APIBuilder) HandleFunc(f func(ctx context.Context) interface{}) *APIBuilder {
 	hf := HandlerFunc(f)

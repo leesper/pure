@@ -34,6 +34,7 @@ func jsonMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFun
 	}
 }
 
+// FIXME: add special treatments for MultipartFormData
 func multipartFormMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if r.Header.Get(ContentType) != MultipartFormData {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
@@ -74,11 +75,11 @@ func corsMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFun
 func recoverPanicMiddleWare(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	defer func() {
 		if err := recover(); err != nil {
-			holmes.Errorln(err)
 			traceInfo := make([]byte, 0<<15)
 			n := runtime.Stack(traceInfo, true)
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, string(traceInfo[:n]))
+			m := fmt.Sprintf("%s %s", err, string(traceInfo[:n]))
+			fmt.Fprint(w, m)
 		}
 	}()
 
