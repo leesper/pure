@@ -8,32 +8,82 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/leesper/holmes"
 )
 
-type helloInput struct {
-	Name string `json:"name"`
-}
-
 type helloOutput struct {
 	Greetings string `json:"greetings"`
 }
 
-type helloHandler struct {
-	Input helloInput
+func helloWorld(ctx context.Context) interface{} {
+	return helloOutput{"hello, world"}
 }
 
-func (h helloHandler) Handle(ctx context.Context) interface{} {
-	return helloOutput{fmt.Sprintf("hello, %s", h.Input.Name)}
+func TestGetAPIBuilding(t *testing.T) {
+	API("hello_world").Version("apiv1").Class("hello").Get().HandleFunc(helloWorld).Done()
+	expected := "/apiv1/hello/hello_world"
+	a, ok := apiMap[expected]
+	if !ok {
+		t.Fatalf("API %s not registered", expected)
+	}
+
+	if a.uri() != expected {
+		t.Fatalf("returned: %s, expected: %s", a.uri(), expected)
+	}
+
+	if a.method != http.MethodGet {
+		t.Fatalf("returned: %s, expected: %s", a.method, http.MethodGet)
+	}
+
+	if a.handlerVal != reflect.ValueOf(HandlerFunc(helloWorld)) {
+		t.Fatalf("returned: %s, expected: %s", a.handlerVal, reflect.ValueOf(HandlerFunc(helloWorld)))
+	}
+
+	if len(a.middlewares) != 0 {
+		t.Fatalf("returned: %v, expected: %v", a.middlewares, []string{})
+	}
+
+	req, err := http.NewRequest(http.MethodGet, a.uri(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+
+	httpRequestDispatcher(rec, req)
+
+	if status := rec.Code; status != http.StatusOK {
+		t.Fatalf("returned status code: %d, expected: %d", status, http.StatusOK)
+	}
+
+	if contentType := rec.Header().Get(ContentType); contentType != ApplicationJSON {
+		t.Fatalf("returned content type: %s, expected: %s", contentType, ApplicationJSON)
+	}
+
+	output := helloOutput{}
+	if err = json.Unmarshal(rec.Body.Bytes(), &output); err != nil {
+		t.Fatal(err)
+	}
+
+	if output.Greetings != "hello, world" {
+		t.Errorf("returned: %s, expected: %s", output.Greetings, "hello, world")
+	}
+}
+
+type hello struct {
+	Name string `json:"name"`
+}
+
+func (h hello) Handle(ctx context.Context) interface{} {
+	return helloOutput{fmt.Sprintf("hello, %s", h.Name)}
 }
 
 func TestPostAPIBuilding(t *testing.T) {
 	defer holmes.Start().Stop()
-	API("hello").Version("apiv1").Class("hello").Post().Handle(helloHandler{}).Done()
+	API("hello").Version("apiv1").Class("hello").Post().Handle(hello{}).Done()
 	expected := "/apiv1/hello/hello"
 	a, ok := apiMap[expected]
 	if !ok {
@@ -44,24 +94,12 @@ func TestPostAPIBuilding(t *testing.T) {
 		t.Fatalf("returned: %s, expected: %s", a.uri(), expected)
 	}
 
-	if !strings.Contains(a.uri(), a.version) {
-		t.Fatalf("returned: %s, expected: %s", a.version, expected)
-	}
-
-	if !strings.Contains(a.uri(), a.class) {
-		t.Fatalf("returned: %s, expected: %s", a.version, expected)
-	}
-
-	if !strings.Contains(a.uri(), a.name) {
-		t.Fatalf("returned: %s, expected: %s", a.version, expected)
-	}
-
 	if a.method != http.MethodPost {
 		t.Fatalf("returned: %s, expected: %s", a.method, http.MethodPost)
 	}
 
-	if a.handlerType != reflect.TypeOf(helloHandler{}) {
-		t.Fatalf("returned: %s, expected: %s", a.handlerType, reflect.TypeOf(helloHandler{}))
+	if a.handlerVal.Type() != reflect.ValueOf(hello{}).Type() {
+		t.Fatalf("returned: %s, expected: %s", a.handlerVal.Type(), reflect.ValueOf(hello{}).Type())
 	}
 
 	if len(a.middlewares) != 0 {
@@ -106,8 +144,8 @@ func TestPostAPIBuilding(t *testing.T) {
 		t.Fatal("router should have url", expected)
 	}
 
-	input := helloInput{"Foo"}
-	data, err := json.Marshal(input)
+	h := hello{"Foo"}
+	data, err := json.Marshal(h)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +157,7 @@ func TestPostAPIBuilding(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 
-	postHandler(rec, req)
+	httpRequestDispatcher(rec, req)
 
 	if status := rec.Code; status != http.StatusOK {
 		t.Fatalf("returned status code: %d, expected: %d", status, http.StatusOK)

@@ -33,6 +33,15 @@ type Handler interface {
 	Handle(ctx context.Context) interface{}
 }
 
+// HandlerFunc is an adapter to allow the use of ordinary functions as handlers.
+// If f is a function with the appropriate signature, HandlerFunc(f) is a Handler object that calls f.
+type HandlerFunc func(ctx context.Context) interface{}
+
+// Handle calls HandlerFunc itself.
+func (hf HandlerFunc) Handle(ctx context.Context) interface{} {
+	return hf(ctx)
+}
+
 // APIBuilder is responsible for building APIs. Please don't operate it directly,
 // use chaining calls instead.
 type APIBuilder struct {
@@ -40,7 +49,7 @@ type APIBuilder struct {
 	class       string
 	name        string
 	method      string
-	handlerType reflect.Type
+	handlerVal  reflect.Value
 	middlewares []negroni.Handler
 }
 
@@ -49,17 +58,17 @@ type api struct {
 	class       string
 	name        string
 	method      string
-	handlerType reflect.Type
+	handlerVal  reflect.Value
 	middlewares []negroni.Handler
 }
 
-func newAPI(version, class, name, method string, handlerType reflect.Type, middlewares []negroni.Handler) *api {
+func newAPI(version, class, name, method string, handlerVal reflect.Value, middlewares []negroni.Handler) *api {
 	return &api{
 		version:     version,
 		class:       class,
 		name:        name,
 		method:      method,
-		handlerType: handlerType,
+		handlerVal:  handlerVal,
 		middlewares: middlewares,
 	}
 }
@@ -87,35 +96,47 @@ func (b *APIBuilder) Class(c string) *APIBuilder {
 	return b
 }
 
-// Post makes API an HTTP POST request.
+// Post marks API an HTTP POST request.
 func (b *APIBuilder) Post() *APIBuilder {
 	b.method = http.MethodPost
 	return b
 }
 
+// Get marks API an HTTP GET request.
+func (b *APIBuilder) Get() *APIBuilder {
+	b.method = http.MethodGet
+	return b
+}
+
+// HandleFunc defines the handler function of request.
+func (b *APIBuilder) HandleFunc(f func(ctx context.Context) interface{}) *APIBuilder {
+	hf := HandlerFunc(f)
+	b.handlerVal = reflect.ValueOf(hf)
+	return b
+}
+
 // Handle defines the handler of request.
 func (b *APIBuilder) Handle(h Handler) *APIBuilder {
-	b.handlerType = reflect.TypeOf(h)
-	fmt.Println(reflect.TypeOf(h))
+	b.handlerVal = reflect.ValueOf(h)
 	return b
 }
 
 // Done triggers APIBuilder to build and register an API.
 func (b *APIBuilder) Done() {
-	a := newAPI(b.version, b.class, b.name, b.method, b.handlerType, b.middlewares)
+	a := newAPI(b.version, b.class, b.name, b.method, b.handlerVal, b.middlewares)
 	apiMap[a.uri()] = a
 	middles := negroni.New(b.middlewares...)
 	if a.method == http.MethodPost {
 	}
 	switch a.method {
-	case http.MethodPost:
-		router.Handle(a.uri(), middles.With(negroni.Wrap(http.HandlerFunc(postHandler)))).Methods(http.MethodOptions, a.method)
-	case http.MethodGet:
-		router.Handle(a.uri(), middles.With(negroni.Wrap(http.HandlerFunc(getHandler)))).Methods(http.MethodOptions, a.method)
+	case http.MethodGet, http.MethodPost:
+		router.Handle(a.uri(), middles.With(negroni.Wrap(http.HandlerFunc(httpRequestDispatcher)))).Methods(http.MethodOptions, a.method)
+	default:
+		holmes.Infof("HTTP %s ignored", a.method)
 	}
 }
 
-func postHandler(w http.ResponseWriter, r *http.Request) {
+func httpRequestDispatcher(w http.ResponseWriter, r *http.Request) {
 	a, ok := apiMap[r.URL.Path]
 	if !ok {
 		holmes.Errorln("cannot find handler for", r.URL.Path)
@@ -123,20 +144,22 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// construct a brand new handler of a.handlerType
-	handlerVal := reflect.New(a.handlerType).Elem()
-
-	// check and construct the input parameter of handler
-	if handlerVal.NumField() <= 0 {
-		holmes.Errorln("no fields found in type", a.handlerType)
-		return
+	var handler Handler
+	switch a.handlerVal.Type().Kind() {
+	case reflect.Func:
+		handler = a.handlerVal.Interface().(Handler)
+	case reflect.Struct:
+		handlerVal := reflect.New(a.handlerVal.Type()).Elem()
+		// inflate handler with data
+		handler = handlerVal.Addr().Interface().(Handler)
+		if handlerVal.NumField() > 0 {
+			err := json.NewDecoder(r.Body).Decode(handler)
+			if err != nil {
+				holmes.Errorln(err)
+				return
+			}
+		}
 	}
-	input := reflect.New(handlerVal.Field(0).Type()).Elem().Addr().Interface()
-	err := json.NewDecoder(r.Body).Decode(input)
-	if err != nil {
-		holmes.Errorln(err)
-		return
-	}
-	handlerVal.Field(0).Set(reflect.ValueOf(input).Elem())
 
 	// collect all the context info.
 	ctx := r.Context()
@@ -145,14 +168,11 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// perform the business logic, return the result.
-	handler := handlerVal.Interface().(Handler)
 	output := handler.Handle(ctx)
-	if err = jsonify(w, output); err != nil {
+	if err := jsonify(w, output); err != nil {
 		holmes.Errorln(err)
 	}
 }
-
-func getHandler(w http.ResponseWriter, r *http.Request) {}
 
 func jsonify(w http.ResponseWriter, message interface{}) error {
 	w.Header().Set(ContentType, ApplicationJSON)
