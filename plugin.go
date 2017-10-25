@@ -1,6 +1,7 @@
 package pure
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/leesper/holmes"
 	"github.com/urfave/negroni"
+)
+
+const (
+	defaultMaxMemory    = 32 << 20 // 32 MB copy from net/http package
+	MultipartContextKey = ContextKey(MultipartFormData)
 )
 
 var (
@@ -25,6 +31,9 @@ var (
 	LoggerPlugin = negroni.HandlerFunc(loggerMiddleware)
 )
 
+// ContextKey is a type wrapper for context key
+type ContextKey string
+
 func jsonMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if r.Header.Get(ContentType) != ApplicationJSON {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
@@ -34,12 +43,28 @@ func jsonMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFun
 	}
 }
 
-// FIXME: add special treatments for MultipartFormData
 func multipartFormMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if r.Header.Get(ContentType) != MultipartFormData {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		fmt.Fprintf(w, "%s not %s", ContentType, MultipartFormData)
 	} else {
+		err := r.ParseMultipartForm(defaultMaxMemory)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		ctx := r.Context()
+		for key, val := range r.Form {
+			ctx = context.WithValue(ctx, key, val)
+		}
+		for key, val := range r.PostForm {
+			ctx = context.WithValue(ctx, key, val)
+		}
+		ctx = context.WithValue(ctx, MultipartContextKey, r.MultipartForm)
+
+		r = r.WithContext(ctx)
 		next(w, r)
 	}
 }
