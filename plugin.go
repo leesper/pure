@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	defaultMaxMemory    = 32 << 20 // 32 MB copy from net/http package
+	defaultMaxMemory = 32 << 20 // 32 MB copy from net/http package
+	// MultipartContextKey is a key for MultipartFormPlugin
 	MultipartContextKey = ContextKey(MultipartFormData)
 )
 
