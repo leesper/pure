@@ -12,12 +12,15 @@ A small-yet-beautiful pure JSON API Web Framework.
 1. Small yet beautiful, pure JSON API support by default;
 
   小而美，默认支持纯JSON API
+
 2. Using Web middlewares to extend its funcionality;
 
   使用Web中间件扩展框架功能
+
 3. Extremely light-weight, easy to use, write less, behave more elegant;
 
   超轻量级，容易使用，写更少的代码，表现更加优雅
+
 4. Supporting TLS;
 
   支持TLS
