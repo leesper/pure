@@ -6,6 +6,7 @@ A small-yet-beautiful pure JSON API Web Framework.
 
 [![GitHub stars](https://img.shields.io/github/stars/leesper/pure.svg)](https://github.com/leesper/pure/stargazers)
 [![GitHub license](https://img.shields.io/github/license/leesper/pure.svg)](https://github.com/leesper/pure)
+[![GoDoc](https://godoc.org/github.com/leesper/pure?status.svg)](http://godoc.org/github.com/leesper/pure)
 
 ## Features
 
@@ -30,7 +31,6 @@ A small-yet-beautiful pure JSON API Web Framework.
 * Golang 1.8 and above
 * [mux](https://github.com/gorilla/mux)
 * [negroni](https://github.com/urfave/negroni)
-* [holmes](https://github.com/leesper/holmes)
 
 ## Installation
 

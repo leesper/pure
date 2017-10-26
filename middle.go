@@ -3,12 +3,12 @@ package pure
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/leesper/holmes"
 	"github.com/urfave/negroni"
 )
 
@@ -128,7 +128,7 @@ func loggerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerF
 		r.Header.Get("User-Agent"),
 		time.Since(start))
 
-	holmes.Infoln(logging)
+	log.Println(logging)
 }
 
 // a wrapper to get HTTP status code.

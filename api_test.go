@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/leesper/holmes"
 )
 
 type helloOutput struct {
@@ -158,7 +157,6 @@ func (h hello) Handle(ctx context.Context) interface{} {
 }
 
 func TestPostAPIBuilding(t *testing.T) {
-	defer holmes.Start().Stop()
 	API("hello").Version("apiv1").Class("hello").Post().Handle(hello{}).Done()
 	expected := "/apiv1/hello/hello"
 	a, ok := apiMap[expected]
