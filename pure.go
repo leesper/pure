@@ -41,6 +41,11 @@ func RunTLSElegant(port int, timeout time.Duration, cert, key string) error {
 	return srv.ListenAndServeTLS(cert, key)
 }
 
+// ServeFile serves HTTP requests with the contents of the filesystem rooted at dir.
+func ServeFile(path, dir string) {
+	router.PathPrefix(path).Handler(http.StripPrefix(path, http.FileServer(http.Dir(dir))))
+}
+
 func newServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:    addr,
