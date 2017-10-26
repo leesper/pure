@@ -19,17 +19,17 @@ const (
 )
 
 var (
-	// JSONPlugin checks whether it is a JSON request.
-	JSONPlugin = negroni.HandlerFunc(jsonMiddleware)
-	// MultipartFormPlugin checks whether it is a multipart/form-data request.
-	MultipartFormPlugin = negroni.HandlerFunc(multipartFormMiddleware)
-	// CORSPlugin handle CORS request, see https://github.com/rs/cors
-	CORSPlugin = negroni.HandlerFunc(corsMiddleware)
-	// RecoverPanicPlugin recovers and records the stack info when panic occurred.
+	// JSONMiddle checks whether it is a JSON request.
+	JSONMiddle = negroni.HandlerFunc(jsonMiddleware)
+	// MultipartFormMiddle checks whether it is a multipart/form-data request.
+	MultipartFormMiddle = negroni.HandlerFunc(multipartFormMiddleware)
+	// CORSMiddle handle CORS request, see https://github.com/rs/cors
+	CORSMiddle = negroni.HandlerFunc(corsMiddleware)
+	// RecoverPanicMiddle recovers and records the stack info when panic occurred.
 	// This prevents web server from crashing.
-	RecoverPanicPlugin = negroni.HandlerFunc(recoverPanicMiddleWare)
-	// LoggerPlugin adds statistic information for every request.
-	LoggerPlugin = negroni.HandlerFunc(loggerMiddleware)
+	RecoverPanicMiddle = negroni.HandlerFunc(recoverPanicMiddleWare)
+	// LoggerMiddle adds statistic information for every request.
+	LoggerMiddle = negroni.HandlerFunc(loggerMiddleware)
 )
 
 // ContextKey is a type wrapper for context key

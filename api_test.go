@@ -23,7 +23,7 @@ func helloWorld(ctx context.Context) interface{} {
 }
 
 func TestPlugins(t *testing.T) {
-	API("hello_world").Version("apiv2").Class("hello").Get().Use(JSONPlugin).HandleFunc(helloWorld).Done()
+	API("hello_world").Version("apiv2").Class("hello").Get().Use(JSONMiddle).HandleFunc(helloWorld).Done()
 
 	uri := "/apiv2/hello/hello_world"
 
@@ -33,7 +33,7 @@ func TestPlugins(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	JSONPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+	JSONMiddle(rec, req, http.HandlerFunc(httpRequestDispatcher))
 
 	if rec.Code != http.StatusUnsupportedMediaType {
 		t.Fatalf("returned: %d, expected: %d", rec.Code, http.StatusUnsupportedMediaType)
@@ -47,7 +47,7 @@ func TestPlugins(t *testing.T) {
 	rec = httptest.NewRecorder()
 	req.Header.Add(ContentType, ApplicationJSON)
 
-	JSONPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+	JSONMiddle(rec, req, http.HandlerFunc(httpRequestDispatcher))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("returned: %d, expected: %d", rec.Code, http.StatusOK)
@@ -66,9 +66,9 @@ func TestPlugins(t *testing.T) {
 		t.Errorf("returned: %s, expected: %s", output.Greetings, "hello, world")
 	}
 
-	LoggerPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+	LoggerMiddle(rec, req, http.HandlerFunc(httpRequestDispatcher))
 	req.Method = http.MethodOptions
-	CORSPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+	CORSMiddle(rec, req, http.HandlerFunc(httpRequestDispatcher))
 }
 
 func willPanic(ctx context.Context) interface{} {
@@ -79,7 +79,7 @@ func willPanic(ctx context.Context) interface{} {
 }
 
 func TestRecoverPanicPlugin(t *testing.T) {
-	API("will_panic").Version("apiv1").Class("test").Use(RecoverPanicPlugin).Get().HandleFunc(willPanic).Done()
+	API("will_panic").Version("apiv1").Class("test").Use(RecoverPanicMiddle).Get().HandleFunc(willPanic).Done()
 	uri := "/apiv1/test/will_panic"
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -87,7 +87,7 @@ func TestRecoverPanicPlugin(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	RecoverPanicPlugin(rec, req, http.HandlerFunc(httpRequestDispatcher))
+	RecoverPanicMiddle(rec, req, http.HandlerFunc(httpRequestDispatcher))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("returned: %d, expected: %d", rec.Code, http.StatusInternalServerError)
