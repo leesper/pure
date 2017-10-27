@@ -79,7 +79,10 @@ type helloRsp struct {
 	Greeting string `json:"greeting"`
 }
 ```
-Use `curl -H "Content-Type: application/json" -X POST -d '{"name": "Fiona"}' http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hello, Fiona"}` back. Use `curl -H "Content-Type: application/json" -X GET http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hi, guest"}` back.
+
+Use `curl -H "Content-Type: application/json" -X POST -d '{"name": "Fiona"}' http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hello, Fiona"}` back. 
+
+Use `curl -H "Content-Type: application/json" -X GET http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hi, guest"}` back.
 
 ## License
 
