@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"reflect"
 
 	"github.com/gorilla/mux"
-	"github.com/leesper/holmes"
 	"github.com/urfave/negroni"
 )
 
@@ -49,7 +49,7 @@ type APIBuilder struct {
 	version     string
 	class       string
 	name        string
-	method      string
+	methods     map[string]bool
 	handlerVal  reflect.Value
 	middlewares []negroni.Handler
 }
@@ -58,17 +58,17 @@ type api struct {
 	version     string
 	class       string
 	name        string
-	method      string
+	methods     []string
 	handlerVal  reflect.Value
 	middlewares []negroni.Handler
 }
 
-func newAPI(version, class, name, method string, handlerVal reflect.Value, middlewares []negroni.Handler) *api {
+func newAPI(version, class, name string, methods []string, handlerVal reflect.Value, middlewares []negroni.Handler) *api {
 	return &api{
 		version:     version,
 		class:       class,
 		name:        name,
-		method:      method,
+		methods:     methods,
 		handlerVal:  handlerVal,
 		middlewares: middlewares,
 	}
@@ -84,7 +84,8 @@ func API(name string) *APIBuilder {
 		panic(errors.New("API name empty"))
 	}
 	return &APIBuilder{
-		name: name,
+		name:    name,
+		methods: make(map[string]bool),
 	}
 }
 
@@ -102,18 +103,18 @@ func (b *APIBuilder) Class(c string) *APIBuilder {
 
 // Post marks API an HTTP POST request.
 func (b *APIBuilder) Post() *APIBuilder {
-	b.method = http.MethodPost
+	b.methods[http.MethodPost] = true
 	return b
 }
 
 // Get marks API an HTTP GET request.
 func (b *APIBuilder) Get() *APIBuilder {
-	b.method = http.MethodGet
+	b.methods[http.MethodGet] = true
 	return b
 }
 
-// Use adds a series of middleware plugins to the API.
-func (b *APIBuilder) Use(handlers ...negroni.Handler) *APIBuilder {
+// With adds a series of middleware plugins to the API.
+func (b *APIBuilder) With(handlers ...negroni.Handler) *APIBuilder {
 	b.middlewares = append(b.middlewares, handlers...)
 	return b
 }
@@ -133,23 +134,20 @@ func (b *APIBuilder) Handle(h Handler) *APIBuilder {
 
 // Done triggers APIBuilder to build and register an API.
 func (b *APIBuilder) Done() {
-	a := newAPI(b.version, b.class, b.name, b.method, b.handlerVal, b.middlewares)
+	methods := []string{http.MethodOptions}
+	for m := range b.methods {
+		methods = append(methods, m)
+	}
+	a := newAPI(b.version, b.class, b.name, methods, b.handlerVal, b.middlewares)
 	apiMap[a.uri()] = a
 	middles := negroni.New(b.middlewares...)
-	if a.method == http.MethodPost {
-	}
-	switch a.method {
-	case http.MethodGet, http.MethodPost:
-		router.Handle(a.uri(), middles.With(negroni.Wrap(http.HandlerFunc(httpRequestDispatcher)))).Methods(http.MethodOptions, a.method)
-	default:
-		holmes.Infof("HTTP %s ignored", a.method)
-	}
+	router.Handle(a.uri(), middles.With(negroni.Wrap(http.HandlerFunc(httpRequestDispatcher)))).Methods(a.methods...)
 }
 
 func httpRequestDispatcher(w http.ResponseWriter, r *http.Request) {
 	a, ok := apiMap[r.URL.Path]
 	if !ok {
-		holmes.Errorln("cannot find handler for", r.URL.Path)
+		log.Println("cannot find handler for", r.URL.Path)
 		return
 	}
 
@@ -162,10 +160,10 @@ func httpRequestDispatcher(w http.ResponseWriter, r *http.Request) {
 		handlerVal := reflect.New(a.handlerVal.Type()).Elem()
 		// inflate handler with data
 		handler = handlerVal.Addr().Interface().(Handler)
-		if handlerVal.NumField() > 0 {
+		if r.Method == http.MethodPost && handlerVal.NumField() > 0 {
 			err := json.NewDecoder(r.Body).Decode(handler)
 			if err != nil {
-				holmes.Errorln(err)
+				log.Println(err)
 				return
 			}
 		}
@@ -176,11 +174,12 @@ func httpRequestDispatcher(w http.ResponseWriter, r *http.Request) {
 	for k, v := range r.Header {
 		ctx = context.WithValue(ctx, k, v)
 	}
+	ctx = context.WithValue(ctx, methodContextKey, r.Method)
 
 	// perform the business logic, return the result.
 	output := handler.Handle(ctx)
 	if err := jsonify(w, output); err != nil {
-		holmes.Errorln(err)
+		log.Println(err)
 	}
 }
 

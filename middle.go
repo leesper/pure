@@ -14,8 +14,6 @@ import (
 
 const (
 	defaultMaxMemory = 32 << 20 // 32 MB copy from net/http package
-	// MultipartContextKey is a key for MultipartFormPlugin
-	MultipartContextKey = ContextKey(MultipartFormData)
 )
 
 var (
@@ -63,7 +61,7 @@ func multipartFormMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		for key, val := range r.PostForm {
 			ctx = context.WithValue(ctx, key, val)
 		}
-		ctx = context.WithValue(ctx, MultipartContextKey, r.MultipartForm)
+		ctx = context.WithValue(ctx, multipartContextKey, r.MultipartForm)
 
 		r = r.WithContext(ctx)
 		next(w, r)

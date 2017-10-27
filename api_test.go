@@ -22,7 +22,7 @@ func helloWorld(ctx context.Context) interface{} {
 }
 
 func TestPlugins(t *testing.T) {
-	API("hello_world").Version("apiv2").Class("hello").Get().Use(JSONMiddle).HandleFunc(helloWorld).Done()
+	API("hello_world").Version("apiv2").Class("hello").Get().With(JSONMiddle).HandleFunc(helloWorld).Done()
 
 	uri := "/apiv2/hello/hello_world"
 
@@ -78,7 +78,7 @@ func willPanic(ctx context.Context) interface{} {
 }
 
 func TestRecoverPanicPlugin(t *testing.T) {
-	API("will_panic").Version("apiv1").Class("test").Use(RecoverPanicMiddle).Get().HandleFunc(willPanic).Done()
+	API("will_panic").Version("apiv1").Class("test").With(RecoverPanicMiddle).Get().HandleFunc(willPanic).Done()
 	uri := "/apiv1/test/will_panic"
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -109,8 +109,14 @@ func TestGetAPIBuilding(t *testing.T) {
 		t.Fatalf("returned: %s, expected: %s", a.uri(), expected)
 	}
 
-	if a.method != http.MethodGet {
-		t.Fatalf("returned: %s, expected: %s", a.method, http.MethodGet)
+	var found bool
+	for _, m := range a.methods {
+		if m == http.MethodGet {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("returned: %v, expected: %s", a.methods, http.MethodGet)
 	}
 
 	if a.handlerVal != reflect.ValueOf(HandlerFunc(helloWorld)) {
@@ -168,8 +174,14 @@ func TestPostAPIBuilding(t *testing.T) {
 		t.Fatalf("returned: %s, expected: %s", a.uri(), expected)
 	}
 
-	if a.method != http.MethodPost {
-		t.Fatalf("returned: %s, expected: %s", a.method, http.MethodPost)
+	var found bool
+	for _, m := range a.methods {
+		if m == http.MethodPost {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("returned: %v, expected: %s", a.methods, http.MethodPost)
 	}
 
 	if a.handlerVal.Type() != reflect.ValueOf(hello{}).Type() {
