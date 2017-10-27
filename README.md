@@ -1,8 +1,8 @@
 # Pure
 
-A small-yet-beautiful pure JSON API Web Framework.
+A small-yet-beautiful pure JSON API Web Framework, 1.0.1.
 
-小而美的纯JSON API Web开发框架
+小而美的纯JSON API Web开发框架，版本1.0.1
 
 [![GitHub stars](https://img.shields.io/github/stars/leesper/pure.svg)](https://github.com/leesper/pure/stargazers)
 [![GitHub license](https://img.shields.io/github/license/leesper/pure.svg)](https://github.com/leesper/pure)
@@ -38,7 +38,7 @@ A small-yet-beautiful pure JSON API Web Framework.
 
 ## Example
 
-A simple "hello, world" example:
+### 1. A simple "hello, world" example:
 
 ```go
 package main
@@ -80,9 +80,17 @@ type helloRsp struct {
 }
 ```
 
-Use `curl -H "Content-Type: application/json" -X POST -d '{"name": "Fiona"}' http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hello, Fiona"}` back. 
+Use `curl -H "Content-Type: application/json" -X POST -d '{"name": "Fiona"}' http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hello, Fiona"}` back.
 
 Use `curl -H "Content-Type: application/json" -X GET http://localhost:5050/apiv1/hello/greeting` to get a `{"greeting":"hi, guest"}` back.
+
+### 2. Web middlewares supported
+
+* JSONMiddle: A Content-Type checker for application/json
+* MultipartFormMiddle: For multipart/form-data requests
+* CORSMiddle: Cross-origin resource sharing
+* RecoverPanicMiddle: Recover from server panic
+* LoggerMiddle: logging about HTTP request details
 
 ## License
 
@@ -90,7 +98,13 @@ Use `curl -H "Content-Type: application/json" -X GET http://localhost:5050/apiv1
 
 ## Changelog
 
+### 1.0.1
 
+1. Replace Use(...) with With(...)
+2. One can now declare an API which can handle both GET and POST request
+3. Make the framework depending on the official log package
+4. Add utility functions for retrieving HTTP method or multi-part form from context
+5. Add functions for closing server gracefully
 
 ## More Documentation
 
